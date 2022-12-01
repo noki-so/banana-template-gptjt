@@ -10,7 +10,7 @@ def init():
     global tokenizer
 
     print("loading to CPU...")
-    model = GPTJForCausalLM.from_pretrained("EleutherAI/gpt-j-6B", revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
+    model = GPTJForCausalLM.from_pretrained("togethercomputer/GPT-JT-6B-v1", torch_dtype=torch.float16, low_cpu_mem_usage=True)
     print("done")
 
     # conditionally load to GPU
@@ -18,8 +18,10 @@ def init():
         print("loading to GPU...")
         model.cuda()
         print("done")
+    else:
+        raise Exception("No GPU provided!")
 
-    tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-j-6B")
+    tokenizer = GPT2Tokenizer.from_pretrained("togethercomputer/GPT-JT-6B-v1")
 
 
 # Inference is ran for every server call
@@ -33,11 +35,14 @@ def inference(model_inputs:dict) -> dict:
     if prompt == None:
         return {'message': "No prompt provided"}
     
+    # pop prompt, so we can use the rest of the model inputs as **kwargs in generate
+    model_inputs.pop("prompt")
+
     # Tokenize inputs
     input_tokens = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
     # Run the model
-    output = model.generate(input_tokens)
+    output = model.generate(input_tokens, **model_inputs)
 
     # Decode output tokens
     output_text = tokenizer.batch_decode(output, skip_special_tokens = True)[0]
